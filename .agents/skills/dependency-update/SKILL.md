@@ -157,7 +157,7 @@ Go through each `minor-available` and `major-available` dependency update, start
 
 For each dependency:
 1. Update the version in the build file.
-2. Run the build using `build-locally.sh` (or equivalent). Do NOT use raw build commands.
+2. Run the build in the exact same way that it was built previously.
 3. If the build passes - Record as **updated**. If the build fails - find out why it failed:
    - Check if the error matches a breaking change from the release notes/CHANGELOG.md (e.g. deprecated/removed methods, package import changes).
    - If you can't determine the reason: Revert the version bump, record as **<major/minor>-blocked** with the error encountered.
