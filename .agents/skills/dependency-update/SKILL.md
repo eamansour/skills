@@ -62,7 +62,7 @@ A module may use more than one build system (e.g. a Go module that also contains
 |------------------|---------------|
 | `go.mod` | [languages/go.md](./languages/go.md) |
 | `build.gradle` / `pom.xml` | [languages/java.md](./languages/java.md) |
-| `package.json` | (no language file yet — list dependencies manually) |
+| `package.json` | [languages/nodejs.md](./languages/nodejs.md) |
 
 **For each build file found, launch a sub-task using `start_subtask`.** Each sub-task is responsible for one build system only and must complete the full identify → risk-assess → update → verify cycle for that system. Pass the relevant context (module path, build file path, language file to use) in the sub-task message.
 
