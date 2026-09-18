@@ -33,20 +33,31 @@ When in doubt, **leave the step with the LLM**. A conservative miss is better th
 
 The argument after `/scriptify` is the skill name (e.g., `/scriptify dependency-update`).
 
-1. Derive the expected SKILL.md path: `skills/<skill-name>/SKILL.md` (relative to workspace root).
-   Also check `.agents/skills/<skill-name>/SKILL.md` if not found in the workspace.
-2. If the file cannot be found in either location, report:
-   > "Could not find a skill named `<skill-name>`. Expected at `skills/<skill-name>/SKILL.md`."
+Search for the skill by scanning all `skills/` directories under any root-level folder in the
+workspace (i.e., directories of the form `<root-dir>/skills/` where `<root-dir>` is a direct
+child of the workspace root, including the workspace root itself). Do **not** hard-code any
+specific folder names.
+
+1. List the top-level directories and the workspace root itself.
+2. For each candidate, check whether `<candidate>/skills/<skill-name>/SKILL.md` exists.
+3. Use the first match found as the **skill root** (`<skill-root>`), e.g.
+   `.agents/skills/dependency-update` or `skills/dependency-update`.
+4. If no match is found across any candidate, report:
+   > "Could not find a skill named `<skill-name>`. Searched for `skills/<skill-name>/SKILL.md`
+   > under every root-level folder in the workspace."
    Then stop without modifying anything.
+
+Carry `<skill-root>` forward — use it as the base path in all subsequent steps.
 
 ---
 
 ## Step 2 — Explore the skill via subagent
 
-Spawn a subagent to read and analyse the target skill. Pass it the following description:
+Spawn a subagent to read and analyse the target skill. Pass it the following description,
+substituting the resolved `<skill-root>` path:
 
-> Read `skills/<skill-name>/SKILL.md` (full content). Also list any files in
-> `skills/<skill-name>/scripts/` (if the directory exists).
+> Read `<skill-root>/SKILL.md` (full content). Also list any files in
+> `<skill-root>/scripts/` (if the directory exists).
 >
 > Return a structured step inventory as a markdown table with these columns:
 > - **Step ID** — sequential number (1, 2, 3 …)
@@ -66,11 +77,11 @@ Wait for the subagent to return before proceeding.
 
 Evaluate each row in the subagent's inventory against the **Scriptability Criteria** table above.
 
-Produce a verdict table, for example:
+Produce a verdict table based on the results of the evaluation, for example:
 
 | Step ID | Heading | Scriptable? | Reason | Proposed script | Language |
 |---------|---------|-------------|--------|-----------------|----------|
-| 1 | Detect project type | ✅ Yes | Deterministic file scan | `detect-project-type.sh` | bash |
+| 1 | Detect project type | ✅ Yes | Deterministic file scan | `detect-project-type.py` | python |
 | 2 | Risk assessment | ❌ No | Requires NL interpretation of release notes | — | — |
 
 Show this table to the user.
@@ -87,18 +98,26 @@ Show this table to the user.
 
 ## Step 4 — Generate scripts
 
+**Determine the scripting language** before writing any scripts:
+
+- If the subagent found existing scripts in `<skill-root>/` or `<skill-root>/scripts/`, inspect their
+  extensions and shebangs to identify the language already in use (e.g. `.sh` → bash,
+  `.py` → Python). Use that same language for all new scripts.
+- If there are no existing scripts, default to **Python** (`.py`, `#!/usr/bin/env python3`)
+  for better cross-platform compatibility.
+
 For each step marked ✅ scriptable:
 
 1. **Determine the script filename.** Use the proposed name from the verdict table (kebab-case,
-   appropriate extension: `.sh` for bash, `.py` for Python).
+   appropriate extension matching the chosen language: `.sh` for bash, `.py` for Python).
 2. **Avoid collisions.** If a file with that name already exists in
-   `skills/<skill-name>/scripts/`, append an incrementing integer before the extension
-   (e.g., `detect-project-type-2.sh`).
-3. **Write the script** to `skills/<skill-name>/scripts/<filename>` using `write_file`.
+   `<skill-root>/scripts/`, append an incrementing integer before the extension
+   (e.g., `detect-project-type-2.py`).
+3. **Write the script** to `<skill-root>/scripts/<filename>` using `write_file`.
 
 Every generated script MUST begin with:
 ```
-#!/usr/bin/env bash          # (or #!/usr/bin/env python3)
+#!/usr/bin/env python3       # (or #!/usr/bin/env bash if the skill uses bash)
 #
 # <one-sentence description of what this script does>
 #
@@ -106,7 +125,7 @@ Every generated script MUST begin with:
 # Output: <description of stdout format>
 ```
 
-After writing each script, show: `✓ Created skills/<skill-name>/scripts/<filename>`
+After writing each script, show: `✓ Created <skill-root>/scripts/<filename>`
 
 ---
 
@@ -125,7 +144,7 @@ describing the work in prose. The replacement prose should:
 **Non-scriptable sections must be preserved verbatim.** Do not alter headings, wording, or
 structure of any section that was not scripted.
 
-Example replacement pattern:
+Example replacement pattern (using the resolved `<skill-root>` path):
 
 Before:
 ```
@@ -141,7 +160,7 @@ After:
 
 Run the detection script:
     ```bash
-    bash skills/<skill-name>/scripts/detect-project-type.sh
+    python3 <skill-root>/scripts/detect-project-type.py
     ```
 
 The script prints one line per detected project in the format `<path>: <type>` (e.g.
@@ -165,8 +184,8 @@ If every step is either Preserved or Replaced:
 
 > **Verification passed.** The updated skill is functionally equivalent to the original.
 > Scripts created:
-> - `skills/<skill-name>/scripts/<script1>` — <one-line purpose>
-> - `skills/<skill-name>/scripts/<script2>` — <one-line purpose>
+> - `<skill-root>/scripts/<script1>` — <one-line purpose>
+> - `<skill-root>/scripts/<script2>` — <one-line purpose>
 
 If any step is neither Preserved nor Replaced (i.e., content was dropped):
 
@@ -174,7 +193,7 @@ If any step is neither Preserved nor Replaced (i.e., content was dropped):
 > - Step N: <heading>
 >
 > Reverting SKILL.md to its original content. The generated scripts have been kept in
-> `skills/<skill-name>/scripts/` for reference.
+> `<skill-root>/scripts/` for reference.
 
 Revert by overwriting the patched SKILL.md with the original content you held in memory.
 Then stop and ask the user how to proceed.
@@ -198,6 +217,6 @@ On success, show:
 | scripts/<skill-name>.sh | <section-replaced> | <language> |
 
 The skill has been updated. Commit both `SKILL.md` and the new scripts together.
-Note: generated bash scripts require a POSIX-compatible shell. They will not run on Windows
-without WSL or Git Bash.
+Note: if bash scripts were generated, they require a POSIX-compatible shell and will not run
+on Windows without WSL or Git Bash. Python scripts run cross-platform provided Python 3 is installed.
 ```
