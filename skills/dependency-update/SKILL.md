@@ -15,30 +15,31 @@ description: >
 
 ### Detect project type
 
-Scan for package files (e.g. build.gradle, pom.xml, go.mod, package.json) to identify the type of project and the relevant build tool/package manager to use.
+Run the detection script:
 
-For a project with several sub-projects, scan each sub-project. Record what type of project it is.
+```bash
+python3 skills/dependency-update/scripts/detect-project-type.py [root-dir]
+```
 
-Example:
-
-| Project | Language |
-|--------|---------|
-| `modules/framework` | Java (Gradle) |
-| `modules/cli` | Go |
-| `modules/obr` | Java (Gradle/Maven) |
+The script walks the directory tree from `root-dir` (defaults to `.`) and prints one line per
+discovered build file in the format `<path>: <type>` (e.g. `modules/cli: go`,
+`modules/framework: java-gradle`, `modules/obr: java-maven`). Use this output to record which
+build systems are present in each sub-project before proceeding.
 
 ### Verify required tools are installed
 
-For every build file found, check that the corresponding tool is installed. This includes:
+Run the tool-verification script:
 
-| Build file | Tool to verify |
-|------------|----------------|
-| `go.mod` | `go` |
-| `pom.xml` | `mvn` |
-| `build.gradle` | `gradle` **or** a `gradlew` wrapper in the same directory |
-| `package.json` | `npm` or `yarn` |
+```bash
+python3 skills/dependency-update/scripts/verify-tools.py [root-dir]
+```
 
-If a required tool is missing, stop and report to the user before proceeding.
+The script scans the same directory tree and prints one line per build file it finds:
+`OK <tool>` when the tool is present, or `MISSING <tool> (required by <build-file>)` when it
+is absent. It exits with code 1 if any tool is missing.
+
+If the script prints any `MISSING` lines or exits non-zero, stop and report the missing tools
+to the user before proceeding.
 
 ### Run a clean build
 
