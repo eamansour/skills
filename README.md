@@ -4,29 +4,22 @@ The `skills` directory contains skills for AI agents. Each skill is a self-conta
 
 ### Using all skills
 
-To pull the entire `skills` folder into your own project using [git sparse-checkout](https://git-scm.com/docs/git-sparse-checkout):
+To add all skills from this repo to your project using [skills.sh](https://skills.sh) (`npx skills`):
 
 ```bash
-# In your git project's root
-git sparse-checkout init --cone
-git remote add skills https://github.com/eamansour/skills.git
-git fetch skills main
-git sparse-checkout add skills
-git checkout skills/main -- skills
+npx skills add eamansour/skills
 ```
 
 ### Using a single skill
 
-To pull only one skill into your project's skills config directory:
+To add only one skill to your project:
 
 ```bash
-# In your git project's root
-git sparse-checkout init --cone
-git remote add skills https://github.com/eamansour/skills.git
-git fetch skills main
-git checkout skills/main -- skills/dependency-update
+npx skills add eamansour/skills@dependency-update
 ```
 
-Then move or copy the fetched folder into wherever your agent expects skills to live, for example `skills/dependency-update`.
+### Keeping skills up to date
 
-> **Keeping skills up to date:** Re-run the `git checkout skills/main -- skills/<skill-name>` command to pull down the latest version of a skill at any time.
+```bash
+npx skills update
+```
