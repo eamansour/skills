@@ -11,8 +11,14 @@ metadata:
 # Scriptify Skill
 
 Analyse an existing agent skill and decide whether any of its steps can be replaced by
-deterministic scripts. If scriptable steps exist, generate the scripts and update the skill's
-`SKILL.md` to call them. Verify that no functional behaviour is lost.
+deterministic scripts. There are two outcomes:
+
+- **Full replacement** — every step is scriptable. The SKILL.md body is replaced with a minimal
+  wrapper that runs the scripts; the original prose instructions are removed entirely.
+- **Partial replacement** — some steps are scriptable. Each scriptable section is rewritten to
+  call its script; non-scriptable sections are preserved verbatim.
+
+In both cases, verify that no functional behaviour is lost.
 
 ## Scriptability Criteria
 
@@ -92,7 +98,11 @@ Show this table to the user.
 >
 > List the per-step reasons. Stop — do not modify any files.
 
-**If at least one step is scriptable:** continue to Step 4.
+**If every step is scriptable (full replacement):** note this and continue to Step 4 with
+`mode = full-replacement`.
+
+**If some (but not all) steps are scriptable (partial replacement):** continue to Step 4 with
+`mode = partial-replacement`.
 
 ---
 
@@ -133,6 +143,41 @@ After writing each script, show: `✓ Created <skill-root>/scripts/<filename>`
 
 Before making any edits, hold the **original full content** of the target SKILL.md in memory
 (you will need it for verification in Step 6).
+
+### Full replacement (mode = full-replacement)
+
+Replace the entire SKILL.md body with a minimal wrapper. Keep the original frontmatter
+(everything between and including the `---` delimiters) unchanged. Replace everything after
+the closing `---` of the frontmatter with:
+
+```
+# <skill-name>
+
+> This skill is fully implemented as scripts. The steps below invoke them in order.
+
+## Usage
+
+Run the following scripts in sequence:
+
+1. **<script-1-description>**
+   ```
+   python3 <skill-root>/scripts/<script-1>
+   ```
+   Output: <expected stdout format>
+
+2. **<script-2-description>**
+   ```
+   python3 <skill-root>/scripts/<script-2>
+   ```
+   Output: <expected stdout format>
+
+Act on each script's output as described before running the next.
+```
+
+Add an entry for each generated script. Use the script's header comment as the source for its
+description and output format.
+
+### Partial replacement (mode = partial-replacement)
 
 For each scriptable step, rewrite its SKILL.md section to call the generated script instead of
 describing the work in prose. The replacement prose should:
@@ -180,14 +225,24 @@ For each step in the **original** SKILL.md (from the copy you held in memory):
 - ✅ **Replaced** — the section has a script call whose description covers the same semantics as
   the original prose
 
-If every step is either Preserved or Replaced:
+**For full replacement:** confirm that every step from the original inventory has a
+corresponding script entry in the new SKILL.md wrapper. Each script must be listed with its
+description and output format.
+
+**For partial replacement:** for each step in the original SKILL.md:
+
+- ✅ **Preserved** — the section is still present verbatim in the updated SKILL.md, OR
+- ✅ **Replaced** — the section has a script call whose description covers the same semantics
+  as the original prose
+
+**Pass condition (either mode):** every original step is accounted for.
 
 > **Verification passed.** The updated skill is functionally equivalent to the original.
 > Scripts created:
 > - `<skill-root>/scripts/<script1>` — <one-line purpose>
 > - `<skill-root>/scripts/<script2>` — <one-line purpose>
 
-If any step is neither Preserved nor Replaced (i.e., content was dropped):
+**Fail condition:** one or more original steps are not accounted for.
 
 > **Verification failed.** The following steps are not accounted for in the updated SKILL.md:
 > - Step N: <heading>
@@ -212,9 +267,11 @@ On success, show:
 **Verification:** ✅ Passed — all original steps accounted for
 
 ### Changes made
-| Script | Replaces section | Language |
-|--------|-----------------|----------|
-| scripts/<skill-name>.sh | <section-replaced> | <language> |
+| Script | Replaces | Language |
+|--------|----------|----------|
+| scripts/<script-name> | <step or "entire skill"> | <language> |
+
+**Replacement mode:** full / partial
 
 The skill has been updated. Commit both `SKILL.md` and the new scripts together.
 Note: if bash scripts were generated, they require a POSIX-compatible shell and will not run
